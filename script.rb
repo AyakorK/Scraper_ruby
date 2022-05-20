@@ -11,8 +11,8 @@ document = Nokogiri::HTML(body)
 projects = document.css('a')
 
 projects.each do |project|
-  next unless project.text.empty? || project.include?('projects')
-  puts project.text, "  #{project['href']}", "\n"
+  next unless project['href'].include?('/project/')
+  puts project['href']
 end
 
 
