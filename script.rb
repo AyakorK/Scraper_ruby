@@ -12,10 +12,10 @@ def find_unique_link(links, variable, unique_link)
     href =  link['href'].to_s
 
     next if check_if_valid(href, variable)
-    next if i == 4 && href.downcase.include?('opensource') || !href.start_with?('https')
+    next if variable == 4 && href.downcase.include?('opensource') || !href.start_with?('https')
 
     unless unique_link.include?(link['href']) || unique_link.include?(link['href'].chomp('/'))
-      (unique_link[i] = link['href']) and break
+      (unique_link[variable] = link['href']) and break
     end
   end
 end
@@ -72,7 +72,7 @@ get_all_links(doc).each do |first_link|
   end
 end
 
-CSV.open('projects.csv', 'w') do |csv|
+CSV.open('output/projects.csv', 'w') do |csv|
   csv << ['Project Name', 'Image', 'Link']
   data.each do |row|
     csv << row.split(',').map(&:strip)
