@@ -4,7 +4,6 @@
 require 'uri'
 require 'net/http'
 require 'nokogiri'
-require 'websocket/driver'
 require 'csv'
 
 def find_unique_link(links, variable, unique_link)
@@ -29,46 +28,52 @@ def check_if_valid(href, variable)
     !href.start_with?('https')
 end
 
-def get_all_links(document)
+def get_all_links_from(document)
   document.css('a')
+end
+
+def is_client_page?(html_link)
+  html_link.text == 'Clients'
 end
 
 uri = URI('https://opensourcepolitics.eu')
 body = Net::HTTP.get(uri)
 # Navigate to "https://opensourcepolitics.eu/references-clients/" by clicking on the "Client" button
-doc = Nokogiri::HTML(body)
+document = Nokogiri::HTML(body)
 data = []
-i = 1
-get_all_links(doc).each do |first_link|
-  next unless first_link.text == 'Clients'
+index = 1
 
-  client_link = first_link['href']
+
+get_all_links_from(document).each do |html_link|
+  next unless is_client_page?(html_link)
+
+  client_link = html_link['href']
 
   uri = URI(client_link)
   body = Net::HTTP.get(uri)
-  document = Nokogiri::HTML(body)
-  projects = get_all_links(document)
-  unique_link = {}
+  document_body = Nokogiri::HTML(body)
+  projects = get_all_links_from(document_body)
+  unique_links = {}
 
   projects.each do |project|
     next unless project['href'].to_s.include?('/project/')
 
     uri = URI(project['href'])
     body = Net::HTTP.get(uri)
-    project_document = Nokogiri::HTML(body)
-    links = get_all_links(project_document)
+    project_document_body = Nokogiri::HTML(body)
+    links = get_all_links_from(project_document_body)
 
-    project_name = project_document.css('h1').text.gsub(/[[:space:]]/, ' ')
+    project_name = project_document_body.css('h1').text.gsub(/[[:space:]]/, ' ')
 
     image = project.css('img').attribute('data-lazy-srcset').value.split(' ')[0]
 
-    find_unique_link(links, i, unique_link)
+    find_unique_link(links, index, unique_links)
 
-    puts "#{unique_link.length} / #{i}"
+    puts "#{unique_links.length} / #{index}"
 
-    data << [project_name, image, unique_link[i]].join(',')
+    data << [project_name, image, unique_links[index]].join(',')
 
-    i += 1
+    index += 1
   end
 end
 
