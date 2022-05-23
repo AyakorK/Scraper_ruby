@@ -1,11 +1,14 @@
+# frozen_string_literal: true
+
 source 'https://rubygems.org/'
 
 ruby '3.1.0'
 
-gem "nokogiri"
-gem "pry"
-gem "capybara"
-gem "poltergeist"
-gem 'uri'
-gem 'net'
 gem 'bundler'
+gem 'capybara'
+gem 'csv'
+gem 'net'
+gem 'nokogiri'
+gem 'poltergeist'
+gem 'pry'
+gem 'uri'
