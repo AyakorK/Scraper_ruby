@@ -1,85 +1,53 @@
 # frozen_string_literal: true
 
-# Require gem uri
 require 'uri'
 require 'net/http'
 require 'nokogiri'
 require 'csv'
 
-def find_unique_link(links, variable, unique_link)
-  links.each do |link|
-    href =  link['href'].to_s
+# Define the URL to scrape
+url = 'http://localhost:3000/processes/curriculum-report/f/3/'
 
-    next if check_if_valid(href, variable)
-    next if variable == 4 && href.downcase.include?('opensource') || !href.start_with?('https')
+# Initialize a hash to store counts
+counts = {
+  "En cours de réalisation" => 0,
+  "Evaluating" => 0,
+  "Autre" => 0
+}
 
-    unless unique_link.include?(link['href']) || unique_link.include?(link['href'].chomp('/'))
-      (unique_link[variable] = link['href']) and break
+# Set the refresh interval in seconds (1 second in this case)
+refresh_interval = 0.4
+
+# Main loop
+loop do
+  uri = URI(url)
+  response = Net::HTTP.get(uri)
+  document = Nokogiri::HTML(response)
+
+  print "J'enregistre les données dans le fichier CSV\n"
+  # Create a CSV file for storing the data
+  CSV.open('output.csv', 'w') do |csv|
+    # Iterate through the specified div elements
+    document.css('div.filters__section.state_check_boxes_tree_filter').each do |filters|
+      # Get the text inside the label element
+      label_text = filters.css('label').text.strip
+
+      # Check if the label text contains the desired phrases
+      if label_text.include?("En cours de réalisation")
+        counts["En cours de réalisation"] += 0.5
+      elsif label_text.include?("Evaluating")
+        counts["Evaluating"] += 0.5
+      else
+        counts["Autre"] += 0.5
+      end
     end
   end
-end
 
-def check_if_valid(href, variable)
-  (href.downcase.include?('open') && variable != 4) || !(href.end_with?('.fr') ||
-    href.end_with?('.is') || href.end_with?('.be') ||
-    href.end_with?('.brussels') || href.end_with?('.paris') ||
-    (href.count('/') == 3 && href.gsub(/[[:space:]]/, '').end_with?('/') ||
-      href.downcase.include?('participez') || href.downcase.include?('democratie'))) ||
-    !href.start_with?('https')
-end
-
-def get_all_links_from(document)
-  document.css('a')
-end
-
-def is_client_page?(html_link)
-  html_link.text == 'Clients'
-end
-
-uri = URI('https://opensourcepolitics.eu')
-body = Net::HTTP.get(uri)
-# Navigate to "https://opensourcepolitics.eu/references-clients/" by clicking on the "Client" button
-document = Nokogiri::HTML(body)
-data = []
-index = 1
-
-
-get_all_links_from(document).each do |html_link|
-  next unless is_client_page?(html_link)
-
-  client_link = html_link['href']
-
-  uri = URI(client_link)
-  body = Net::HTTP.get(uri)
-  document_body = Nokogiri::HTML(body)
-  projects = get_all_links_from(document_body)
-  unique_links = {}
-
-  projects.each do |project|
-    next unless project['href'].to_s.include?('/project/')
-
-    uri = URI(project['href'])
-    body = Net::HTTP.get(uri)
-    project_document_body = Nokogiri::HTML(body)
-    links = get_all_links_from(project_document_body)
-
-    project_name = project_document_body.css('h1').text.gsub(/[[:space:]]/, ' ')
-
-    image = project.css('img').attribute('data-lazy-srcset').value.split(' ')[0]
-
-    find_unique_link(links, index, unique_links)
-
-    puts "#{unique_links.length} / #{index}"
-
-    data << [project_name, image, unique_links[index]].join(',')
-
-    index += 1
+  # Print the counts in the desired format
+  counts.each do |label, count|
+    puts "#{label} : #{count.ceil}"
   end
-end
 
-CSV.open('output/projects.csv', 'w') do |csv|
-  csv << ['Project Name', 'Image', 'Link']
-  data.each do |row|
-    csv << row.split(',').map(&:strip)
-  end
+  # Sleep for the specified refresh interval before the next iteration
+  sleep(refresh_interval)
 end
